@@ -1,0 +1,67 @@
+<!DOCTYPE html SYSTEM "http://www.thymeleaf.org/dtd/xhtml1-strict-thymeleaf-4.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>ArcGIS API for JavaScript Tutorials: Add a point, line, and polygon</title>
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.22/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.22/"></script>
+
+    <script
+            src="https://code.jquery.com/jquery-3.3.1.min.js"
+            integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+    <script type="application/javascript">
+
+
+        require([
+            "esri/config",
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/Graphic",
+            "esri/geometry/Geometry",
+            "esri/layers/FeatureLayer",
+            "esri/renderers/Renderer",
+            "esri/PopupTemplate",
+            "esri/layers/Layer",
+            "esri/layers/GraphicsLayer",
+
+
+        ], function(esriConfig, Map, MapView, Graphic,
+                    Geometry, FeatureLayer, Renderer,
+                    PopupTemplate, Layer, GraphicsLayer) {
+
+            esriConfig.apiKey = "AAPKcb7a1cc140be4ca4b3e2812c0245d00crRCuawhLgr90t7wmovNNUOMWMWQ4A7I6lE1l_TIMm4JyRswJITZC9fOhcgUpluHe";
+
+
+            const map = new Map({
+                basemap: "topo-vector",
+                sliderPosition: "top-right",
+                slider: false
+
+            });
+
+            const view = new MapView({
+                map: map,
+                center: [5.787439,52.711319], //Longitude, latitude
+                zoom: 8,
+                container: "viewDiv"
+            });
+
+            let stationFeatureLayer;
+        });
+    </script>
+</head>
+<body>
+<div id="viewDiv"></div>
+</body>
+</html>

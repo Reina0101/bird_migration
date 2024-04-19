@@ -1,0 +1,244 @@
+<!DOCTYPE html SYSTEM "http://www.thymeleaf.org/dtd/xhtml1-strict-thymeleaf-4.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>ArcGIS API for JavaScript Tutorials: Add a point, line, and polygon</title>
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.22/esri/themes/light/main.css">
+</head>
+<body>
+<div id="viewDiv"></div>
+
+<script src="https://js.arcgis.com/4.22/"></script>
+<script type="application/javascript">
+    require([
+        "esri/config",
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/Graphic",
+        "esri/geometry/Geometry",
+        "esri/layers/FeatureLayer",
+        "esri/renderers/Renderer",
+        "esri/PopupTemplate",
+        "esri/layers/Layer",
+        "esri/request",
+        "esri/layers/GraphicsLayer",
+        "esri/widgets/Legend"
+    ], function(esriConfig, Map, MapView, Graphic,
+                Geometry, FeatureLayer, esriRequest, Renderer,
+                PopupTemplate, Layer, GraphicsLayer, Legend) {
+
+        esriConfig.apiKey = "AAPKcb7a1cc140be4ca4b3e2812c0245d00crRCuawhLgr90t7wmovNNUOMWMWQ4A7I6lE1l_TIMm4JyRswJITZC9fOhcgUpluHe";
+
+        /*
+        Retrieves data from GBIF and returns the result as JSON object
+         */
+        async function getData(animal, province) {
+            console.log("Gathering data!");
+            console.log("in:" + animal);
+            console.log("in:" + province);
+
+            let url = "https://api.gbif.org/v1/occurrence/search?limit=400&country=NL&q=" + String(animal) + "&stateProvince=" + String(province);
+            console.log("url going in:" + url)
+
+            let response = await fetch(url);
+            let json = await response.json();
+
+            return json;
+        }
+
+
+        function createFeatureList(json) {
+            let features = [];
+            let objectID = 1;
+
+            json.results.forEach(result => {
+
+                // Many results have no coordinates, skip those
+                // NOTE: also entries where species is undefined are removed
+                if ((result.decimalLongitude !== undefined) && (result.species !== undefined)) {
+                    let geometry = {
+                        type: "point",
+                        x: result.decimalLongitude,
+                        y: result.decimalLatitude
+                    };
+
+                    let featureName = result.name === undefined ? "Unknown" : result.name;
+                    console.log(featureName);
+                    let attr = {
+                        ObjectID: objectID,
+                        name: result.species,
+                        year: result.year,
+                        province: result.stateProvince,
+                        ref: result.references
+                    };
+
+                    features.push({
+                        geometry: geometry,
+                        attributes: attr
+                    });
+
+                    objectID++;
+                }
+            });
+            if (features.length > 300){
+                subtitle = "Showing first 300 datapoints";
+            }
+            else {
+                subtitle = "showing " + features.length.toString() + " points";
+            }
+
+            return features;
+        }
+
+        function createRenderer(features){
+            //store all the unique values
+            let unique_values = [...new Set(features.map(data => data.attributes.name))];
+
+            let colorArray = ['#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6',
+                '#E6B333', '#3366E6', '#999966', '#99FF99', '#B34D4D',
+                '#80B300', '#809900', '#E6B3B3', '#6680B3', '#66991A',
+                '#FF99E6', '#CCFF1A', '#FF1A66', '#E6331A', '#33FFCC',
+                '#66994D', '#B366CC', '#4D8000', '#B33300', '#CC80CC',
+                '#66664D', '#991AFF', '#E666FF', '#4DB3FF', '#1AB399',
+                '#E666B3', '#33991A', '#CC9999', '#B3B31A', '#00E680',
+                '#4D8066', '#809980', '#E6FF80', '#1AFF33', '#999933',
+                '#FF3380', '#CCCC00', '#66E64D', '#4D80CC', '#9900B3',
+                '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6', '#6666FF'];
+
+            colors = [];
+            //fill array required for stops attribute
+            for (let i = 0; i < unique_values.length; i++) {
+                let color_value = colorArray[i]
+                let unique = unique_values[i]
+                console.log(unique);
+                if (unique !== undefined) {
+                    let colorInfo = {
+                        value: unique,
+                        symbol: {
+                            type: "simple-marker",
+                            color: color_value,
+                            style: "circle"
+                        }
+                    }
+                    colors.push(colorInfo);
+                }
+            }
+
+            const renderer = {
+                type: "unique-value",
+                legendOptions: {
+                    title: `Found ${colors.length} matching species for ` + sessionStorage.getItem("animal") + ':'
+                        + "\n" + subtitle
+                },
+                field: "name",
+                uniqueValueInfos: colors
+            };
+
+            return renderer;
+        }
+
+        function createFeatureLayer(features, renderer) {
+            console.log(renderer);
+            let template = {
+                title: "Animal found in {province}",
+                content: [
+                    {
+                        type: "fields",
+                        fieldInfos: [
+                            {
+                                fieldName: "name",
+                                label: "Name"
+                            },
+                            {
+                                fieldName: "year",
+                                label: "Year",
+                            },
+                            {
+                                fieldName: "ref",
+                                label: "Reference"
+                            }
+                        ]
+                    }]
+            };
+            return new FeatureLayer({
+                source: features,
+                objectIdField: "ObjectID",
+                popupTemplate: template,
+                renderer: renderer,
+                fields: [
+                    {
+                        name: "ObjectID",
+                        type: "oid"
+                    },
+                    {
+                        name: "name",
+                        type: "string"
+                    },
+                    {
+                        name: "year",
+                        type: "double"
+                    },
+                    {
+                        name: "province",
+                        type: "string"
+                    },
+                    {
+                        name: "ref",
+                        type: "string"
+                    }
+
+                ]
+            });
+        }
+
+        function addLegend() {
+            let legend = new Legend({
+                view: view
+            });
+
+            view.ui.add(legend, "bottom-right");
+        }
+
+        const map = new Map({
+            basemap: "topo-vector",
+            sliderPosition: "top-right"
+        });
+
+        const view = new MapView({
+            map: map,
+            center: [5.16, 52.12], //Longitude, latitude --> NL
+            zoom: 7,
+            container: "viewDiv"
+        });
+
+
+        async function MapData() {
+            let animal = sessionStorage.getItem("animal");
+            let province = sessionStorage.getItem("province");
+
+            let json = await getData(animal, province);
+            let features = createFeatureList(json);
+            let renderer = createRenderer(features);
+            let featureLayer = createFeatureLayer(features, renderer);
+            map.add(featureLayer);
+
+            // Post-additions
+            addLegend();
+        }
+
+        // Fetch and Add data to the map
+        MapData();
+    });
+</script>
+</body>
+</html>
